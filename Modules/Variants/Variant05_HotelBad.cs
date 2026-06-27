@@ -1,45 +1,101 @@
 namespace ReviewSamples.Modules.Variants;
 
-public class Variant05_Room
+public enum RoomType
 {
-    public int N;
-    public string T;
-    public double P;
+    Deluxe,
+    Standard,
+    Economy,
+    Apartment
 }
 
-public class Variant05_Booking
+public class Room
 {
-    public string Guest;
-    public DateTime From;
-    public DateTime To;
-    public int RoomN;
-}
+    public int RoomNumber { get; set; }
+    public RoomType Type { get; set; }
+    public decimal PricePerNight { get; set; }
 
-public class Variant05_HotelBad
-{
-    private List<Variant05_Booking> bookings = new();
-
-    public string Book(Variant05_Room r, string guest, DateTime from, DateTime to)
+    public Room(int roomNumber, RoomType type, decimal pricePerNight)
     {
-        for (int i = 0; i < bookings.Count; i++)
-        {
-            if (bookings[i].RoomN == r.N)
-            {
-                if (from < bookings[i].To && to > bookings[i].From)
-                {
-                    return "bad";
-                }
-            }
-        }
+        RoomNumber = roomNumber;
+        Type = type;
+        PricePerNight = pricePerNight;
+    }
+}
 
-        var b = new Variant05_Booking { Guest = guest, From = from, To = to, RoomN = r.N };
-        bookings.Add(b);
+public class Booking
+{
+    public string GuestName { get; set; }
+    public DateTime CheckInDate { get; set; }
+    public DateTime CheckOutDate { get; set; }
+    public int RoomNumber { get; set; }
+}
+
+public class HotelFixed
+{
+    private List<Booking> _bookings = new List<Booking>();
+
+    public string BookRoom(Room room, string guestName, DateTime checkInDate, DateTime checkOutDate)
+    {
+        if (room == null)
+            return "error: room is null";
+
+        if (string.IsNullOrWhiteSpace(guestName))
+            return "error: guest name is empty";
+
+        if (checkInDate >= checkOutDate)
+            return "error: check-in date must be before check-out date";
+
+        if (checkInDate < DateTime.Today)
+            return "error: check-in date cannot be in the past";
+
+        if (!IsRoomAvailable(room.RoomNumber, checkInDate, checkOutDate))
+            return "bad";
+
+        var booking = new Booking
+        {
+            GuestName = guestName,
+            CheckInDate = checkInDate,
+            CheckOutDate = checkOutDate,
+            RoomNumber = room.RoomNumber
+        };
+
+        _bookings.Add(booking);
         return "ok";
     }
 
-    public double Price(Variant05_Booking b, Variant05_Room r)
+    private bool IsRoomAvailable(int roomNumber, DateTime checkInDate, DateTime checkOutDate)
     {
-        var nights = (b.To - b.From).Days;
-        return nights * r.P;
+        foreach (var booking in _bookings)
+        {
+            if (booking.RoomNumber == roomNumber)
+            {
+                if (checkInDate < booking.CheckOutDate && checkOutDate > booking.CheckInDate)
+                {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    public decimal CalculateBookingPrice(Booking booking, Room room)
+    {
+        if (booking == null || room == null)
+            return 0;
+
+        if (booking.RoomNumber != room.RoomNumber)
+            return 0;
+
+        int nights = (booking.CheckOutDate - booking.CheckInDate).Days;
+
+        if (nights <= 0)
+            return 0;
+
+        return nights * room.PricePerNight;
+    }
+
+    public IReadOnlyList<Booking> GetAllBookings()
+    {
+        return _bookings.AsReadOnly();
     }
 }
